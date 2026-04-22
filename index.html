@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pronoboost ⚽</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- LOGIN SCREEN -->
+  <div id="screen-login" class="screen active">
+    <div class="login-wrap">
+      <div class="login-left">
+        <div class="login-brand">
+          <span class="brand-dot"></span>
+          <span class="brand-name">Pronoboost</span>
+        </div>
+        <div class="login-hero">
+          <p class="login-eyebrow">FIFA World Cup 2026</p>
+          <h1 class="login-headline">Pronostiquez.<br>Affrontez.<br>Gagnez.</h1>
+          <p class="login-desc">La compétition de pronostics entre collègues pour la Coupe du Monde 2026 — USA · Canada · Mexique</p>
+        </div>
+        <div class="login-stats">
+          <div class="stat"><span class="stat-n">104</span><span class="stat-l">matchs</span></div>
+          <div class="stat-sep"></div>
+          <div class="stat"><span class="stat-n">+3</span><span class="stat-l">pts score exact</span></div>
+          <div class="stat-sep"></div>
+          <div class="stat"><span class="stat-n">∞</span><span class="stat-l">collègues</span></div>
+        </div>
+      </div>
+      <div class="login-right">
+        <div class="login-card">
+          <h2 class="login-card-title">Rejoindre un groupe</h2>
+          <div class="field-group">
+            <label class="field-label">Votre prénom</label>
+            <input type="text" id="login-name" placeholder="ex : Marie" maxlength="20" autocomplete="off">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Code du groupe</label>
+            <input type="text" id="login-code" placeholder="ex : BUREAU26" maxlength="20" autocomplete="off" style="text-transform:uppercase">
+          </div>
+          <button class="btn-primary" onclick="App.login()">Rejoindre →</button>
+          <div class="divider"><span>ou</span></div>
+          <button class="btn-ghost" onclick="App.showCreateGroup()">Créer un nouveau groupe</button>
+          <div id="create-group-form" class="create-group-box hidden">
+            <div class="field-group">
+              <label class="field-label">Choisir un code de groupe</label>
+              <input type="text" id="new-group-code" placeholder="ex : COMPTA26" maxlength="20" autocomplete="off" style="text-transform:uppercase">
+            </div>
+            <p class="hint-text">Vous serez l'administrateur du groupe et pourrez saisir les résultats.</p>
+            <button class="btn-primary" onclick="App.createGroup()">Créer le groupe</button>
+          </div>
+          <div id="login-error" class="error-msg hidden"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="screen-app" class="screen hidden">
+
+    <header class="app-header">
+      <div class="header-brand">
+        <span class="brand-dot small"></span>
+        <span class="brand-name">Pronoboost</span>
+        <span id="header-group" class="group-pill"></span>
+      </div>
+      <div class="header-right">
+        <span id="header-user" class="header-user"></span>
+        <button class="btn-logout" onclick="App.logout()" title="Déconnexion">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <nav class="app-nav">
+      <button class="nav-btn active" data-tab="matchs" onclick="App.switchTab('matchs')">Mes pronos</button>
+      <button class="nav-btn" data-tab="classement" onclick="App.switchTab('classement')">Classement</button>
+      <button class="nav-btn" data-tab="collegues" onclick="App.switchTab('collegues')">Collègues</button>
+      <button class="nav-btn" data-tab="admin" onclick="App.switchTab('admin')" id="nav-admin" style="display:none">Admin</button>
+    </nav>
+
+    <!-- MATCHS -->
+    <div id="tab-matchs" class="tab-content active">
+      <div class="tab-header">
+        <h2>Mes pronos</h2>
+        <div class="phase-filters" id="phase-filters"></div>
+        <div class="group-subfilters-pronos hidden" id="pronos-group-subfilters"></div>
+      </div>
+      <div class="matches-list" id="matches-list"><div class="loading">Chargement…</div></div>
+    </div>
+
+    <!-- CLASSEMENT -->
+    <div id="tab-classement" class="tab-content hidden">
+      <div class="tab-header">
+        <h2>Classement <span id="ranking-count" class="count-badge"></span></h2>
+      </div>
+      <div id="ranking-list" class="ranking-list"><div class="loading">Calcul en cours…</div></div>
+      <div class="rules-strip">
+        <div class="rule-chip"><strong>+3 pts</strong> Score exact</div>
+        <div class="rule-chip"><strong>+1 pt</strong> Bon vainqueur</div>
+        <div class="rule-chip"><strong>0 pt</strong> Mauvais prono</div>
+      </div>
+    </div>
+
+    <!-- COLLÈGUES -->
+    <div id="tab-collegues" class="tab-content hidden">
+      <div class="tab-header">
+        <h2>Collègues</h2>
+        <p class="tab-sub">Pronostics visibles après le coup d'envoi</p>
+      </div>
+      <div id="collegues-list" class="collegues-list"><div class="loading">Chargement…</div></div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="tab-admin" class="tab-content hidden">
+      <div class="tab-header">
+        <h2>Administration</h2>
+        <p class="tab-sub">Saisissez les résultats réels après chaque match</p>
+      </div>
+      <div class="invite-box">
+        <div class="invite-label">🔗 Lien d'invitation</div>
+        <div class="share-url" id="share-url-display"></div>
+        <button class="btn-copy" onclick="App.copyLink()">Copier le lien</button>
+      </div>
+      <div class="sync-api-box">
+        <button class="btn-sync-api" id="btn-sync-api" onclick="App.syncFromApi()">
+          ↻ Actualiser depuis l'API
+        </button>
+        <p class="sync-api-hint">Met à jour les équipes et importe les scores déjà joués depuis openfootball/worldcup.json</p>
+      </div>
+      <div id="admin-matches-list" class="matches-list"><div class="loading">Chargement…</div></div>
+    </div>
+
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, get, onValue, push, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    // =============================================
+    // 🔧 CONFIGURATION FIREBASE
+    // =============================================
+    const firebaseConfig = {
+      apiKey: "AIzaSyBFQOX9VjqdaKdhUrZP0H7ecmkqRHaljL0",
+      authDomain: "pronoboost.firebaseapp.com",
+      databaseURL: "https://pronoboost-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "pronoboost",
+      storageBucket: "pronoboost.firebasestorage.app",
+      messagingSenderId: "517213027015",
+      appId: "1:517213027015:web:b72c733ce152e299501ce2"
+    };
+    // =============================================
+
+    const firebaseApp = initializeApp(firebaseConfig);
+    const db = getDatabase(firebaseApp);
+    window._db = db;
+    window._dbFns = { ref, set, get, onValue, push, update };
+
+    // BUG FIX : chaîner le chargement pour garantir que matches.js est prêt avant app.js
+    const script = document.createElement('script');
+    script.src = 'js/matches.js';
+    script.onload = () => {
+      const script2 = document.createElement('script');
+      script2.src = 'js/app.js';
+      script2.onload = () => App.init();
+      document.head.appendChild(script2);
+    };
+    document.head.appendChild(script);
+  </script>
+</body>
+</html>
