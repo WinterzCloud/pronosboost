@@ -186,9 +186,16 @@ const App = (() => {
     // Utilise le fallback statique data/matches.json si GitHub est inaccessible.
     const EXPECTED = 104;
     const count = Object.keys(matchesObj).length;
-    const hasTBD = Object.values(matchesObj).some(m => m.home === 'TBD' || m.away === 'TBD' || !m.homeFlag);
-    if (count < EXPECTED || hasTBD) {
-      console.warn(`[App] Données incomplètes (${count}/${EXPECTED} matchs) — réparation automatique…`);
+    // Un nom d'équipe de phase de groupes qui commence par un chiffre ("1A", "2B"),
+    // "W"/"L" ("W73", "L101") ou contient "/" ("3A/B/C/D/F") est un placeholder de
+    // bracket : c'est le signe d'une donnée écrite avant le tirage au sort.
+    const isPlaceholderName = n => !n || n === 'TBD' || /^[0-9WL]/.test(n) || n.includes('/');
+    const hasStaleData = Object.values(matchesObj).some(m =>
+      !m.homeFlag || !m.awayFlag ||
+      (m.phase === 'Groupes' && (isPlaceholderName(m.home) || isPlaceholderName(m.away)))
+    );
+    if (count < EXPECTED || hasStaleData) {
+      console.warn(`[App] Données Firebase obsolètes (${count}/${EXPECTED} matchs, placeholders détectés) — re-synchronisation depuis l'API…`);
       container.innerHTML = '<div class="loading">Réparation des matchs manquants…</div>';
       const apiResult = await WCApi.fetchMatches({ forceRefresh: true });
       if (apiResult.ok && apiResult.data.length) {
