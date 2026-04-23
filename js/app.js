@@ -186,13 +186,19 @@ const App = (() => {
     // Utilise le fallback statique data/matches.json si GitHub est inaccessible.
     const EXPECTED = 104;
     const count = Object.keys(matchesObj).length;
-    // Un nom d'équipe de phase de groupes qui commence par un chiffre ("1A", "2B"),
-    // "W"/"L" ("W73", "L101") ou contient "/" ("3A/B/C/D/F") est un placeholder de
-    // bracket : c'est le signe d'une donnée écrite avant le tirage au sort.
-    const isPlaceholderName = n => !n || n === 'TBD' || /^[0-9WL]/.test(n) || n.includes('/');
+    // Un nom d'équipe de phase de groupes est un placeholder si : vide, "TBD",
+    // commence par un chiffre ("1A", "2B"), "W"/"L" ("W73", "L101"), contient "/"
+    // ("3A/B/C/D/F"), ou commence par "Équipe" ("Équipe A1", vestige d'une ancienne
+    // version du seed Firebase écrite avant le tirage au sort).
+    const DEFAULT_FLAG = '🏳️';
+    const isPlaceholderName = n =>
+      !n || n === 'TBD' || /^[0-9WL]/.test(n) || n.includes('/') || n.startsWith('Équipe');
     const hasStaleData = Object.values(matchesObj).some(m =>
       !m.homeFlag || !m.awayFlag ||
-      (m.phase === 'Groupes' && (isPlaceholderName(m.home) || isPlaceholderName(m.away)))
+      (m.phase === 'Groupes' && (
+        isPlaceholderName(m.home) || isPlaceholderName(m.away) ||
+        m.homeFlag === DEFAULT_FLAG || m.awayFlag === DEFAULT_FLAG
+      ))
     );
     if (count < EXPECTED || hasStaleData) {
       console.warn(`[App] Données Firebase obsolètes (${count}/${EXPECTED} matchs, placeholders détectés) — re-synchronisation depuis l'API…`);
@@ -293,7 +299,7 @@ const App = (() => {
     let html = '';
     filtered.forEach(m => {
       const matchTime = new Date(m.date).getTime();
-      const isDone    = m.resultHome !== null && m.resultAway !== null;
+      const isDone    = m.resultHome != null && m.resultAway != null;
       const isOpen    = !isDone && matchTime > now + 60000;
       const myP       = myPronos[m.id];
       const points    = (isDone && myP) ? calcPoints(myP.home, myP.away, m.resultHome, m.resultAway) : null;
@@ -447,7 +453,7 @@ const App = (() => {
       const rows = startedMatches.slice(0, 12).map(m => {
         const p = userPronos[m.id];
         if (!p) return '';
-        const isDone = m.resultHome !== null && m.resultAway !== null;
+        const isDone = m.resultHome != null && m.resultAway != null;
         let cls = '', label = '';
         if (isDone) {
           const pts = calcPoints(p.home, p.away, m.resultHome, m.resultAway);
@@ -493,7 +499,7 @@ const App = (() => {
       html += `<div class="phase-group"><div class="phase-label">${phase}</div>`;
       phaseMatches.forEach(m => {
         const dateStr = new Date(m.date).toLocaleDateString('fr-FR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
-        const isDone = m.resultHome !== null && m.resultAway !== null;
+        const isDone = m.resultHome != null && m.resultAway != null;
         html += `<div class="match-card">
           <div class="match-meta">
             <span class="match-date-str">${dateStr}</span>
@@ -503,9 +509,9 @@ const App = (() => {
             <div class="team"><span class="flag">${m.homeFlag}</span><span class="team-name">${m.home}</span></div>
             <div class="score-center">
               <div class="prono-inputs">
-                <input class="score-input" type="number" min="0" max="20" id="rh_${m.id}" value="${m.resultHome !== null ? m.resultHome : ''}" placeholder="0">
+                <input class="score-input" type="number" min="0" max="20" id="rh_${m.id}" value="${m.resultHome != null ? m.resultHome : ''}" placeholder="0">
                 <span class="score-sep">–</span>
-                <input class="score-input" type="number" min="0" max="20" id="ra_${m.id}" value="${m.resultAway !== null ? m.resultAway : ''}" placeholder="0">
+                <input class="score-input" type="number" min="0" max="20" id="ra_${m.id}" value="${m.resultAway != null ? m.resultAway : ''}" placeholder="0">
               </div>
               <button class="btn-save admin-save" onclick="App.saveResult('${m.id}')">${isDone ? 'Modifier' : 'Saisir résultat'}</button>
             </div>
