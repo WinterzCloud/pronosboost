@@ -205,11 +205,21 @@ const App = (() => {
       container.innerHTML = '<div class="loading">Réparation des matchs manquants…</div>';
       const apiResult = await WCApi.fetchMatches({ forceRefresh: true });
       if (apiResult.ok && apiResult.data.length) {
-        const updates = {};
+        // Préserver les résultats déjà saisis par l'admin, en les retrouvant par
+        // id OU par (date, home, away) — au cas où une ancienne version du code
+        // utilisait des id différents.
+        const findExistingResult = newM => {
+          const byId = matchesObj[newM.id];
+          if (byId && (byId.resultHome != null || byId.resultAway != null)) return byId;
+          return Object.values(matchesObj).find(o =>
+            o && o.date === newM.date && o.home === newM.home && o.away === newM.away &&
+            (o.resultHome != null || o.resultAway != null)
+          );
+        };
+        const newMatches = {};
         apiResult.data.forEach(m => {
-          const existing = matchesObj[m.id] || {};
-          // Conserver les résultats saisis manuellement par l'admin
-          updates[`groups/${currentUser.groupCode}/matches/${m.id}`] = {
+          const existing = findExistingResult(m) || {};
+          newMatches[m.id] = {
             id: m.id, phase: m.phase, group: m.group,
             date: m.date, home: m.home, away: m.away,
             homeFlag: m.homeFlag, awayFlag: m.awayFlag,
@@ -218,7 +228,10 @@ const App = (() => {
             resultAway: existing.resultAway ?? null
           };
         });
-        await update(ref(db()), updates);
+        // set() au lieu de update() : remplace intégralement /matches, ce qui
+        // supprime les anciennes clés fantômes (ex: "match_001") laissées par
+        // un ancien schéma d'id et évite les doublons dans la liste.
+        await set(ref(db(), `groups/${currentUser.groupCode}/matches`), newMatches);
         // Relire depuis Firebase pour avoir la version finale (au cas où d'autres
         // changements auraient eu lieu entre temps)
         const freshSnap = await get(ref(db(), `groups/${currentUser.groupCode}/matches`));
@@ -543,17 +556,26 @@ const App = (() => {
     const existingSnap = await get(ref(db(), `groups/${currentUser.groupCode}/matches`));
     const existing = existingSnap.val() || {};
 
-    const updates = {};
+    // Retrouver un résultat existant par id OU par (date, home, away), pour
+    // survivre à un changement de schéma d'id entre deux versions de l'app.
+    const findExistingResult = newM => {
+      const byId = existing[newM.id];
+      if (byId && (byId.resultHome != null || byId.resultAway != null)) return byId;
+      return Object.values(existing).find(o =>
+        o && o.date === newM.date && o.home === newM.home && o.away === newM.away &&
+        (o.resultHome != null || o.resultAway != null)
+      );
+    };
+
+    const newMatches = {};
     apiResult.data.forEach(m => {
-      const current = existing[m.id] || {};
+      const current = findExistingResult(m) || {};
       // Conserver les résultats saisis manuellement ; utiliser l'API seulement si
       // l'admin n'a pas encore saisi de résultat pour ce match
-      const resultHome = (current.resultHome !== null && current.resultHome !== undefined)
-        ? current.resultHome : m.resultHome;
-      const resultAway = (current.resultAway !== null && current.resultAway !== undefined)
-        ? current.resultAway : m.resultAway;
+      const resultHome = current.resultHome != null ? current.resultHome : m.resultHome;
+      const resultAway = current.resultAway != null ? current.resultAway : m.resultAway;
 
-      updates[`groups/${currentUser.groupCode}/matches/${m.id}`] = {
+      newMatches[m.id] = {
         id: m.id, phase: m.phase, group: m.group,
         date: m.date, home: m.home, away: m.away,
         homeFlag: m.homeFlag, awayFlag: m.awayFlag,
@@ -561,7 +583,10 @@ const App = (() => {
       };
     });
 
-    await update(ref(db()), updates);
+    // set() remplace intégralement /matches et supprime les clés fantômes d'un
+    // ancien schéma d'id (évite les doublons qui se traduisent par des matchs
+    // affichés avec "Équipe A1" à côté des vrais).
+    await set(ref(db(), `groups/${currentUser.groupCode}/matches`), newMatches);
     if (btn) { btn.textContent = '✓ Synchronisé !'; btn.disabled = false; }
     setTimeout(() => renderAdmin(), 1000);
   }
